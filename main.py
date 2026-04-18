@@ -51,9 +51,12 @@ async def get_chat_page(request: Request):
 
 @app.post("/chat")
 async def chat_endpoint(chat_request: ChatRequest):
-    user_message = chat_request.message
-    response = chain_with_history.invoke(
-        {"input": user_message},
-        config={"configurable": {"session_id": "default_user"}}
-    )
-    return {"response": response.content}
+    try:
+        user_message = chat_request.message
+        response = chain_with_history.invoke(
+            {"input": user_message},
+            config={"configurable": {"session_id": "render_user"}}
+        )
+        return {"response": response.content}
+    except Exception as e:
+        return {"error": str(e)}
