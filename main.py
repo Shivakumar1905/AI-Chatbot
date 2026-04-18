@@ -4,60 +4,53 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.chat_history import InMemoryChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.prompts import ChatPromptTemplate
 import os
 
+# Load environment variables
 load_dotenv()
+
+# Initialize FastAPI
 app = FastAPI()
+
+# Templates folder
 templates = Jinja2Templates(directory="templates")
 
-
+# Initialize LLM (IMPORTANT: explicit API key)
 llm = ChatOpenAI(
-    model="gpt-4o-mini",
+    model="gpt-4o-mini",   # you can change to gpt-3.5-turbo if needed
     temperature=0.7,
     api_key=os.environ["OPENAI_API_KEY"]
 )
 
-
+# Prompt template (NO history → stable)
 prompt = ChatPromptTemplate.from_messages([
     ("system", "You are a helpful assistant."),
-    MessagesPlaceholder(variable_name="history"),
     ("human", "{input}"),
 ])
 
-
+# Chain
 chain = prompt | llm
-store = {}
 
-def get_session_history(session_id: str):
-    if session_id not in store:
-        store[session_id] = InMemoryChatMessageHistory()
-    return store[session_id]
-
-chain_with_history = RunnableWithMessageHistory(
-    chain,
-    get_session_history,
-    input_messages_key="input",
-    history_messages_key="history",
-)
-
+# Request model
 class ChatRequest(BaseModel):
     message: str
 
+# Home route
 @app.get("/", response_class=HTMLResponse)
 async def get_chat_page(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+# Chat endpoint
 @app.post("/chat")
 async def chat_endpoint(chat_request: ChatRequest):
     try:
         user_message = chat_request.message
-        response = chain_with_history.invoke(
-            {"input": user_message},
-            config={"configurable": {"session_id": "render_user"}}
-        )
+
+        response = chain.invoke({"input": user_message})
+
         return {"response": response.content}
+
     except Exception as e:
+        # Return actual error for debugging
         return {"error": str(e)}
