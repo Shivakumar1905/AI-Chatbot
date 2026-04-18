@@ -16,7 +16,8 @@ templates = Jinja2Templates(directory="templates")
 
 llm = ChatOpenAI(
     model="gpt-4o-mini",
-    temperature=0.7
+    temperature=0.7,
+    api_key=os.environ["OPENAI_API_KEY"]
 )
 
 
